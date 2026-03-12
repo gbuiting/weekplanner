@@ -1,7 +1,8 @@
 const CACHE = 'mise-en-place-v1';
 const ASSETS = [
-  '/index.html',
-  '/manifest.json'
+  './index.html',
+  './manifest.json',
+  './sw.js'
 ];
 
 self.addEventListener('install', e => {
