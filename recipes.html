@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mise en Place — Receptenbeheer</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3d2b1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recepten">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f5f0e8;
+    --warm-white: #faf8f3;
+    --ink: #1a1612;
+    --bark: #3d2b1f;
+    --terracotta: #c4522a;
+    --rust: #a03e22;
+    --sage: #7a8c6e;
+    --gold: #c9a84c;
+    --muted: #8a7e74;
+    --border: #ddd5c8;
+    --card-bg: #ffffff;
+    --shadow: 0 2px 20px rgba(26,22,18,0.08);
+    --shadow-lg: 0 8px 40px rgba(26,22,18,0.14);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--bark);
+    color: var(--cream);
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  .logo span {
+    color: var(--gold);
+    font-style: italic;
+  }
+
+  nav {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .nav-btn {
+    background: none;
+    border: none;
+    color: rgba(245,240,232,0.6);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    color: var(--cream);
+    background: rgba(245,240,232,0.12);
+  }
+
+  .nav-btn.active {
+    color: var(--gold);
+  }
+
+  /* MAIN */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+  }
+
+  .view { display: none; }
+  .view.active { display: block; animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* PAGE TITLES */
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    color: var(--bark);
+    margin-bottom: 0.4rem;
+  }
+
+  .page-subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* RECIPE GRID */
+  .recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .recipe-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+
+  .recipe-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .card-color-bar {
+    height: 5px;
+  }
+
+  /* CARD PHOTO */
+  .card-photo {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* PHOTO UPLOAD */
+  .photo-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    position: relative;
+    background: var(--cream);
+  }
+
+  .photo-upload-area:hover { border-color: var(--terracotta); }
+
+  .photo-upload-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    gap: 0.4rem;
+    color: var(--muted);
+    min-height: 120px;
+  }
+
+  .photo-upload-empty .upload-icon { font-size: 1.8rem; }
+  .photo-upload-empty .upload-label { font-size: 0.83rem; font-weight: 500; }
+  .photo-upload-empty .upload-hint { font-size: 0.75rem; }
+
+  .photo-preview-wrap { position: relative; }
+
+  .photo-preview-wrap img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .photo-remove-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(26,22,18,0.65);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    line-height: 1;
+  }
+
+  .photo-remove-btn:hover { background: var(--terracotta); }
+
+  /* DETAIL PHOTO */
+  .detail-photo {
+    width: 100%;
+    max-height: 340px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    display: block;
+    box-shadow: var(--shadow);
+    cursor: zoom-in;
+    transition: opacity 0.15s;
+  }
+
+  .detail-photo:hover { opacity: 0.92; }
+
+  /* LIGHTBOX */
+  #lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,8,6,0.92);
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    cursor: zoom-out;
+  }
+
+  #lightbox.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #lightbox img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 8px 60px rgba(0,0,0,0.6);
+    transform: scale(0.94);
+    transition: transform 0.25s;
+  }
+
+  #lightbox.open img {
+    transform: scale(1);
+  }
+
+  #lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: white;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    line-height: 1;
+  }
+
+  #lightbox-close:hover { background: rgba(255,255,255,0.25); }
+
+  .card-body {
+    padding: 1.2rem 1.4rem;
+  }
+
+  .card-category {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terracotta);
+    margin-bottom: 0.4rem;
+  }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    color: var(--bark);
+    line-height: 1.3;
+    margin-bottom: 0.6rem;
+  }
+
+  .card-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.8rem;
+  }
+
+  .card-meta span::before {
+    margin-right: 0.3rem;
+  }
+
+  .card-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.8rem 1.4rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.83rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s;
+    border: none;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--terracotta);
+    color: white;
+  }
+
+  .btn-primary:hover { background: var(--rust); transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--bark);
+    border: 1.5px solid var(--border);
+  }
+
+  .btn-secondary:hover { border-color: var(--bark); background: var(--cream); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  .btn-ghost:hover { color: var(--terracotta); background: rgba(196,82,42,0.06); }
+
+  .btn-danger {
+    background: transparent;
+    color: #c0392b;
+    border: 1.5px solid #e8b8b4;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .btn-danger:hover { background: #fdf0ef; }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--bark);
+    font-weight: 500;
+  }
+
+  .btn-gold:hover { background: #b8943d; transform: translateY(-1px); }
+
+  /* ADD RECIPE CARD */
+  .add-recipe-card {
+    background: var(--card-bg);
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--muted);
+    gap: 0.6rem;
+  }
+
+  .add-recipe-card:hover {
+    border-color: var(--terracotta);
+    color: var(--terracotta);
+    background: rgba(196,82,42,0.03);
+  }
+
+  .add-icon { font-size: 2rem; }
+  .add-label { font-size: 0.85rem; font-weight: 500; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+  }
+
+  .empty-state .big-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,22,18,0.55);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--warm-white);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.96) translateY(10px);
+    transition: transform 0.25s;
+  }
+
+  .modal-overlay.open .modal {
+    transform: scale(1) translateY(0);
+  }
+
+  .modal-header {
+    padding: 1.5rem 1.8rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--bark);
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 0.2rem;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+
+  .modal-close:hover { color: var(--ink); }
+
+  .modal-body { padding: 1.5rem 1.8rem; }
+
+  /* FORM */
+  .form-group { margin-bottom: 1.2rem; }
+
+  .form-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--bark);
+    margin-bottom: 0.4rem;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: white;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--terracotta);
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 90px;
+    line-height: 1.5;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    margin-top: 0.5rem;
+  }
+
+  /* WEEK PLANNER */
+  .week-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .week-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 800px) {
+    .week-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 500px) {
+    .week-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-row { grid-template-columns: 1fr; }
+    nav { display: none; }
+    main { padding-bottom: 5rem; }
+  }
+
+  /* BOTTOM TAB BAR (mobile only) */
+  #bottom-nav {
+    display: none;
+  }
+
+  @media (max-width: 500px) {
+    #bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bark);
+      z-index: 200;
+      box-shadow: 0 -2px 16px rgba(0,0,0,0.2);
+      height: 62px;
+    }
+
+    .bottom-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      background: none;
+      border: none;
+      color: rgba(245,240,232,0.5);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: color 0.18s;
+      padding: 0.5rem 0;
+    }
+
+    .bottom-tab .tab-icon {
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+
+    .bottom-tab.active {
+      color: var(--gold);
+    }
+
+    .bottom-tab:active {
+      background: rgba(245,240,232,0.07);
+    }
+  }
+
+  .day-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .day-card[onclick]:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .day-name {
+    background: var(--bark);
+    color: var(--cream);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+  }
+
+  .day-recipe {
+    padding: 0.85rem 0.75rem;
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .day-recipe-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--bark);
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+  }
+
+  .day-recipe-cat {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--terracotta);
+  }
+
+  .day-recipe-time {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  .day-empty {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    padding: 1rem 0.5rem;
+  }
+
+  /* HISTORY BADGE */
+  .history-note {
+    background: rgba(122,140,110,0.12);
+    border: 1px solid rgba(122,140,110,0.3);
+    color: var(--sage);
+    border-radius: 6px;
+    padding: 0.65rem 1rem;
+    font-size: 0.82rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bark);
+    color: var(--cream);
+    padding: 0.75rem 1.5rem;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 400;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* SEARCH */
+  .search-bar {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .search-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .search-input-wrap input {
+    width: 100%;
+    padding: 0.6rem 0.9rem 0.6rem 2.4rem;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    background: white;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input-wrap input:focus { border-color: var(--terracotta); }
+
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+    font-size: 0.9rem;
+  }
+
+  .filter-select {
+    padding: 0.6rem 0.9rem;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    background: white;
+    color: var(--ink);
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* DETAIL VIEW */
+  .detail-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .detail-back {
+    color: var(--muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 1rem;
+    transition: color 0.15s;
+  }
+
+  .detail-back:hover { color: var(--terracotta); }
+
+  .detail-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.4rem;
+    color: var(--bark);
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+
+  .detail-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .detail-section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--bark);
+    margin: 1.5rem 0 0.7rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ingredients-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.4rem;
+  }
+
+  .ingredients-list li {
+    font-size: 0.88rem;
+    padding: 0.3rem 0;
+    padding-left: 1rem;
+    position: relative;
+    color: var(--ink);
+  }
+
+  .ingredients-list li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--terracotta);
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .instructions-text {
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+
+  .detail-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  /* CATEGORY COLORS */
+  .cat-breakfast { background: #e8b84c; }
+  .cat-lunch { background: #7ab87a; }
+  .cat-dinner { background: #c4522a; }
+  .cat-dessert { background: #c47ab8; }
+  .cat-snack { background: #7ab8c4; }
+  .cat-other { background: #a0a0a0; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--cream); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">Mise <span>en Place</span></div>
+    <nav>
+      <button class="nav-btn active" onclick="showView('recipes')">Mijn Recepten</button>
+      <button class="nav-btn" onclick="showView('planner')">Weekplanner</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- RECIPES VIEW -->
+  <div class="view active" id="view-recipes">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+      <div>
+        <h1 class="page-title">Receptenverzameling</h1>
+        <p class="page-subtitle">Jouw persoonlijk kookboek</p>
+      </div>
+      <button class="btn btn-primary" onclick="openAddModal()">＋ Recept toevoegen</button>
+    </div>
+
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Recepten zoeken…" oninput="renderRecipes()">
+      </div>
+      <select class="filter-select" id="filter-cat" onchange="renderRecipes()">
+        <option value="">Alle categorieën</option>
+        <option value="Ontbijt">Ontbijt</option>
+        <option value="Lunch">Lunch</option>
+        <option value="Avondeten">Avondeten</option>
+        <option value="Dessert">Dessert</option>
+        <option value="Snack">Snack</option>
+        <option value="Overig">Overig</option>
+      </select>
+    </div>
+
+    <div class="recipe-grid" id="recipe-grid"></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div class="view" id="view-detail">
+    <div class="detail-back" onclick="showView('recipes')">← Terug naar recepten</div>
+    <div id="detail-content"></div>
+  </div>
+
+  <!-- PLANNER VIEW -->
+  <div class="view" id="view-planner">
+    <div class="week-header">
+      <div>
+        <h1 class="page-title">Weekplanner</h1>
+        <p class="page-subtitle">7 avondmaaltijden, in één klik gepland</p>
+      </div>
+      <div class="week-actions">
+        <button class="btn btn-secondary" onclick="clearWeek()">Week wissen</button>
+        <button class="btn btn-gold" onclick="generateWeek()">🎲 Week genereren</button>
+      </div>
+    </div>
+
+    <div id="history-note" style="display:none;" class="history-note">
+      ✓ Recepten van vorige week zijn uitgesloten (waar mogelijk)
+    </div>
+
+    <div class="week-grid" id="week-grid"></div>
+  </div>
+
+</main>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="recipe-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">Nieuw Recept</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Foto</label>
+        <div class="photo-upload-area" id="photo-upload-area" onclick="document.getElementById('f-photo-input').click()">
+          <div class="photo-upload-empty" id="photo-upload-empty">
+            <div class="upload-icon">📷</div>
+            <div class="upload-label">Foto toevoegen</div>
+            <div class="upload-hint">Camera of galerij — tik om te kiezen</div>
+          </div>
+          <div class="photo-preview-wrap" id="photo-preview-wrap" style="display:none">
+            <img id="photo-preview-img" src="" alt="Voorvertoning">
+            <button class="photo-remove-btn" onclick="removePhoto(event)" title="Foto verwijderen">✕</button>
+          </div>
+        </div>
+        <input type="file" id="f-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Receptnaam *</label>
+        <input type="text" class="form-input" id="f-name" placeholder="bijv. Spaghetti Carbonara">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Categorie</label>
+          <select class="form-select" id="f-cat">
+            <option value="Avondeten">Avondeten</option>
+            <option value="Ontbijt">Ontbijt</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Dessert">Dessert</option>
+            <option value="Snack">Snack</option>
+            <option value="Overig">Overig</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bereidingstijd</label>
+          <input type="text" class="form-input" id="f-time" placeholder="bijv. 30 min">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Porties</label>
+        <input type="text" class="form-input" id="f-servings" placeholder="bijv. 4 personen">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Korte omschrijving</label>
+        <input type="text" class="form-input" id="f-desc" placeholder="Een korte samenvatting…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ingrediënten (één per regel)</label>
+        <textarea class="form-textarea" id="f-ingredients" placeholder="200g pasta&#10;2 eieren&#10;100g spekjes"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bereidingswijze</label>
+        <textarea class="form-textarea" id="f-instructions" style="min-height:120px;" placeholder="Stap voor stap instructies…"></textarea>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveRecipe()">Opslaan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav id="bottom-nav">
+  <button class="bottom-tab active" id="tab-recipes" onclick="showView('recipes')">
+    <span class="tab-icon">🍽️</span>
+    Mijn Recepten
+  </button>
+  <button class="bottom-tab" id="tab-planner" onclick="showView('planner')">
+    <span class="tab-icon">📅</span>
+    Weekplanner
+  </button>
+</nav>
+
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────
+const STORAGE_RECIPES = 'mise_recipes';
+const STORAGE_WEEK    = 'mise_current_week';
+const STORAGE_LAST    = 'mise_last_week';
+
+const DAYS = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+
+let recipes = [];
+let currentWeek = [];  // array of 7 recipe IDs or null
+let lastWeek = [];     // array of 7 recipe IDs from previous generation
+let editingId = null;
+
+// ─── PERSISTENCE ─────────────────────────────────────────────────
+function load() {
+  try {
+    recipes     = JSON.parse(localStorage.getItem(STORAGE_RECIPES)) || [];
+    currentWeek = JSON.parse(localStorage.getItem(STORAGE_WEEK))    || Array(7).fill(null);
+    lastWeek    = JSON.parse(localStorage.getItem(STORAGE_LAST))     || [];
+  } catch(e) {
+    recipes = []; currentWeek = Array(7).fill(null); lastWeek = [];
+  }
+  if (currentWeek.length !== 7) currentWeek = Array(7).fill(null);
+}
+
+function save() {
+  localStorage.setItem(STORAGE_RECIPES, JSON.stringify(recipes));
+  localStorage.setItem(STORAGE_WEEK, JSON.stringify(currentWeek));
+  localStorage.setItem(STORAGE_LAST, JSON.stringify(lastWeek));
+}
+
+// ─── VIEWS ───────────────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.bottom-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  const idx = {recipes:0, detail:0, planner:1}[name] ?? 0;
+  document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
+  const tabId = {recipes:'tab-recipes', detail:'tab-recipes', planner:'tab-planner'}[name];
+  if (tabId) document.getElementById(tabId)?.classList.add('active');
+  if (name === 'recipes') renderRecipes();
+  if (name === 'planner') renderWeek();
+}
+
+// ─── RECIPES ─────────────────────────────────────────────────────
+function catClass(cat) {
+  return 'cat-' + (cat||'other').toLowerCase();
+}
+
+function renderRecipes() {
+  const q   = document.getElementById('search-input').value.toLowerCase();
+  const cat = document.getElementById('filter-cat').value;
+  const grid = document.getElementById('recipe-grid');
+
+  let filtered = recipes.filter(r => {
+    const matchQ   = !q || r.name.toLowerCase().includes(q) || (r.desc||'').toLowerCase().includes(q);
+    const matchCat = !cat || r.category === cat;
+    return matchQ && matchCat;
+  });
+
+  let html = `<div class="add-recipe-card" onclick="openAddModal()">
+    <div class="add-icon">＋</div>
+    <div class="add-label">Recept toevoegen</div>
+  </div>`;
+
+  if (filtered.length === 0) {
+    html += `<div class="empty-state">
+      <div class="big-icon">🥘</div>
+      <p>${recipes.length === 0 ? 'Nog geen recepten. Voeg je eerste toe!' : 'Geen recepten gevonden.'}</p>
+    </div>`;
+  } else {
+    filtered.forEach(r => {
+      html += `<div class="recipe-card" onclick="showDetail('${r.id}')">
+        ${r.photo
+          ? `<img class="card-photo" src="${r.photo}" alt="${esc(r.name)}">`
+          : `<div class="card-color-bar ${catClass(r.category)}"></div>`}
+        <div class="card-body">
+          <div class="card-category">${r.category||'Overig'}</div>
+          <div class="card-title">${esc(r.name)}</div>
+          <div class="card-meta">
+            ${r.time ? `<span>⏱ ${esc(r.time)}</span>` : ''}
+            ${r.servings ? `<span>👤 ${esc(r.servings)}</span>` : ''}
+          </div>
+          ${r.desc ? `<div class="card-desc">${esc(r.desc)}</div>` : ''}
+        </div>
+        <div class="card-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-ghost" onclick="openEditModal('${r.id}')">✏️ Bewerken</button>
+          <button class="btn btn-ghost" style="color:#c0392b" onclick="deleteRecipe('${r.id}')">🗑 Verwijderen</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  grid.innerHTML = html;
+}
+
+function showDetail(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+
+  const ingredients = (r.ingredients||'').split('\n').filter(Boolean);
+  const ingHtml = ingredients.length
+    ? `<ul class="ingredients-list">${ingredients.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`
+    : '<p style="color:var(--muted);font-size:0.85rem">Geen ingrediënten opgegeven.</p>';
+
+  document.getElementById('detail-content').innerHTML = `
+    ${r.photo ? `<img class="detail-photo" src="${r.photo}" alt="${esc(r.name)}" onclick="openLightbox(this.src)">` : ''}
+    <div class="detail-header">
+      <div class="detail-title">${esc(r.name)}</div>
+      <div class="detail-meta">
+        <span>📂 ${r.category||'Other'}</span>
+        ${r.time ? `<span>⏱ ${esc(r.time)}</span>` : ''}
+        ${r.servings ? `<span>👤 ${esc(r.servings)}</span>` : ''}
+      </div>
+      ${r.desc ? `<p style="color:var(--muted);font-size:0.9rem">${esc(r.desc)}</p>` : ''}
+      <div class="detail-actions">
+        <button class="btn btn-secondary" onclick="openEditModal('${r.id}')">✏️ Bewerken</button>
+        <button class="btn btn-danger" onclick="deleteRecipe('${r.id}', true)">🗑 Verwijderen</button>
+      </div>
+    </div>
+    <div class="detail-section-title">Ingrediënten</div>
+    ${ingHtml}
+    ${r.instructions ? `<div class="detail-section-title">Bereidingswijze</div>
+    <p class="instructions-text">${esc(r.instructions)}</p>` : ''}
+  `;
+
+  showView('detail');
+}
+
+function deleteRecipe(id, fromDetail=false) {
+  if (!confirm('Dit recept verwijderen?')) return;
+  recipes = recipes.filter(r => r.id !== id);
+  currentWeek = currentWeek.map(w => w === id ? null : w);
+  lastWeek = lastWeek.filter(w => w !== id);
+  save();
+  toast('Recept verwijderd');
+  if (fromDetail) showView('recipes');
+  else renderRecipes();
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Nieuw Recept';
+  ['name','cat','time','servings','desc','ingredients','instructions'].forEach(f => {
+    const el = document.getElementById('f-' + f);
+    if (el.tagName === 'SELECT') el.value = 'Avondeten';
+    else el.value = '';
+  });
+  resetPhotoUI(null);
+  document.getElementById('recipe-modal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Recept bewerken';
+  document.getElementById('f-name').value = r.name || '';
+  document.getElementById('f-cat').value = r.category || 'Avondeten';
+  document.getElementById('f-time').value = r.time || '';
+  document.getElementById('f-servings').value = r.servings || '';
+  document.getElementById('f-desc').value = r.desc || '';
+  document.getElementById('f-ingredients').value = r.ingredients || '';
+  document.getElementById('f-instructions').value = r.instructions || '';
+  resetPhotoUI(r.photo || null);
+  document.getElementById('recipe-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('recipe-modal').classList.remove('open');
+}
+
+function saveRecipe() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('Vul een receptnaam in.'); return; }
+
+  const data = {
+    name,
+    category: document.getElementById('f-cat').value,
+    time: document.getElementById('f-time').value.trim(),
+    servings: document.getElementById('f-servings').value.trim(),
+    desc: document.getElementById('f-desc').value.trim(),
+    ingredients: document.getElementById('f-ingredients').value.trim(),
+    instructions: document.getElementById('f-instructions').value.trim(),
+    photo: currentPhotoData,
+  };
+
+  if (editingId) {
+    const idx = recipes.findIndex(r => r.id === editingId);
+    if (idx !== -1) recipes[idx] = { ...recipes[idx], ...data };
+    toast('Recept bijgewerkt!');
+  } else {
+    data.id = 'r' + Date.now();
+    recipes.push(data);
+    toast('Recept toegevoegd!');
+  }
+
+  save();
+  closeModal();
+  renderRecipes();
+}
+
+// Close modal on overlay click
+document.getElementById('recipe-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ─── PHOTO HANDLING ──────────────────────────────────────────────
+let currentPhotoData = null;
+
+function resetPhotoUI(photoDataUrl) {
+  currentPhotoData = photoDataUrl || null;
+  document.getElementById('f-photo-input').value = '';
+  if (currentPhotoData) {
+    document.getElementById('photo-upload-empty').style.display = 'none';
+    document.getElementById('photo-preview-wrap').style.display = 'block';
+    document.getElementById('photo-preview-img').src = currentPhotoData;
+  } else {
+    document.getElementById('photo-upload-empty').style.display = 'flex';
+    document.getElementById('photo-preview-wrap').style.display = 'none';
+    document.getElementById('photo-preview-img').src = '';
+  }
+}
+
+function handlePhotoSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    // Resize to keep storage manageable
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxW = 800, maxH = 600;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      resetPhotoUI(dataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(event) {
+  event.stopPropagation();
+  resetPhotoUI(null);
+}
+
+// ─── WEEK PLANNER ────────────────────────────────────────────────
+function generateWeek() {
+  if (recipes.length === 0) {
+    toast('Voeg eerst wat recepten toe!');
+    return;
+  }
+
+  const lastSet = new Set(lastWeek.filter(Boolean));
+  
+  // Prefer recipes NOT in last week
+  let pool = recipes.filter(r => !lastSet.has(r.id));
+  let useLastWeekToo = false;
+
+  // If pool too small, supplement with all recipes
+  if (pool.length < 7) {
+    pool = [...recipes];
+    useLastWeekToo = recipes.length >= 7 && lastSet.size > 0;
+  }
+
+  // Save current week as last week before overwriting
+  lastWeek = [...currentWeek.filter(Boolean)];
+
+  // Shuffle and pick 7
+  const shuffled = shuffle([...pool]);
+  currentWeek = [];
+  for (let i = 0; i < 7; i++) {
+    currentWeek.push(shuffled[i % shuffled.length]?.id || null);
+  }
+
+  save();
+  renderWeek(lastSet.size > 0 && !useLastWeekToo);
+  toast('Nieuwe week gegenereerd!');
+}
+
+function clearWeek() {
+  currentWeek = Array(7).fill(null);
+  save();
+  renderWeek(false);
+}
+
+function renderWeek(showHistoryNote=false) {
+  const grid = document.getElementById('week-grid');
+  const note = document.getElementById('history-note');
+  note.style.display = showHistoryNote ? 'flex' : 'none';
+
+  grid.innerHTML = DAYS.map((day, i) => {
+    const rid = currentWeek[i];
+    const recipe = rid ? recipes.find(r => r.id === rid) : null;
+
+    const body = recipe
+      ? `<div class="day-recipe">
+          <div class="day-recipe-cat">${recipe.category||'Other'}</div>
+          <div class="day-recipe-name">${esc(recipe.name)}</div>
+          ${recipe.time ? `<div class="day-recipe-time">⏱ ${esc(recipe.time)}</div>` : ''}
+        </div>`
+      : `<div class="day-empty">Geen recept</div>`;
+
+    return `<div class="day-card" ${recipe ? `onclick="showDetail('${recipe.id}')" style="cursor:pointer"` : ''}>
+      <div class="day-name">${day}</div>
+      ${body}
+    </div>`;
+  }).join('');
+}
+
+// ─── LIGHTBOX ────────────────────────────────────────────────────
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightbox-img').src = src;
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+// ─── UTILS ───────────────────────────────────────────────────────
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+load();
+renderRecipes();
+renderWeek(false);
+
+// Seed demo data if empty
+if (recipes.length === 0) {
+  const demos = [
+    { name: 'Spaghetti Carbonara', category: 'Avondeten', time: '25 min', servings: '4', desc: 'Klassieke Romeinse pasta met ei, kaas en spekjes.', ingredients: '400g spaghetti\n150g spekjes\n4 eieren\n100g Pecorino Romano\n50g Parmezaan\nZwarte peper\nZout', instructions: '1. Kook pasta in gezouten kokend water.\n2. Bak spekjes knapperig.\n3. Klop eieren met kaas.\n4. Giet pasta af en meng met spekjes.\n5. Van het vuur, voeg eiermengsel toe en schep snel door.\n6. Breng op smaak met zwarte peper en serveer.' },
+    { name: 'Avocadotoast', category: 'Ontbijt', time: '10 min', servings: '2', desc: 'Simpele, voedzame en heerlijke ochtendtoast.', ingredients: '2 sneetjes zuurdesembrood\n1 rijpe avocado\nCitroensap\nChilivlokken\nZout & peper\n2 eieren (optioneel)', instructions: '1. Toast het brood goudbruin.\n2. Prak avocado met citroensap.\n3. Smeer op de toast, bestrooi met chilivlokken en kruid naar smaak.\n4. Voeg een gepocheerd ei toe naar wens.' },
+    { name: 'Kip Roerbak', category: 'Avondeten', time: '20 min', servings: '3', desc: 'Snelle en gezonde roerbak vol groenten.', ingredients: '500g kipfilet\n2 paprika\'s\n1 broccoli\n3 el sojasaus\n1 el sesamolie\nKnoflook\nGember', instructions: '1. Snijd kip in dunne reepjes.\n2. Verhit olie in een wok op hoog vuur.\n3. Bak kip goudbruin.\n4. Voeg groenten toe en roerbak 4 min.\n5. Voeg sojasaus, knoflook en gember toe.\n6. Serveer over rijst.' },
+    { name: 'Griekse Salade', category: 'Lunch', time: '10 min', servings: '2', desc: 'Frisse Mediterrane salade met feta.', ingredients: '2 tomaten\n1 komkommer\n½ rode ui\n100g feta\nOlijven\nOlijfolie\nOregano', instructions: '1. Snijd groenten in grove stukken.\n2. Meng in een schaal.\n3. Voeg feta en olijven toe.\n4. Besprenkel met olijfolie en bestrooi met oregano.' },
+    { name: 'Bananenpannenkoeken', category: 'Ontbijt', time: '15 min', servings: '2', desc: 'Luchtige pannenkoeken met slechts 2 ingrediënten.', ingredients: '2 rijpe bananen\n2 eieren\nSnufje kaneel\nAhornsiroop om te serveren', instructions: '1. Prak bananen goed fijn.\n2. Meng met eieren en kaneel.\n3. Schep kleine cirkels in een beboterde pan.\n4. Bak 2 min per kant.\n5. Serveer met ahornsiroop.' },
+    { name: 'Linzensoep', category: 'Avondeten', time: '40 min', servings: '4', desc: 'Verwarmende en hartige rode linzensoep.', ingredients: '200g rode linzen\n1 ui\n2 wortels\n2 knoflookteentjes\n1 tl komijn\n1 tl kurkuma\n1L groentebouillon', instructions: '1. Fruit ui en knoflook.\n2. Voeg wortels en kruiden toe.\n3. Voeg linzen en bouillon toe.\n4. Laat 25 min sudderen tot linzen zacht zijn.\n5. Mix gedeeltelijk voor een romige textuur.' },
+    { name: 'Margherita Pizza', category: 'Avondeten', time: '35 min', servings: '2', desc: 'Eenvoudige zelfgemaakte pizza met verse basilicum.', ingredients: 'Pizzadeeg\n200ml tomatensaus\n150g mozzarella\nVerse basilicum\nOlijfolie\nZout', instructions: '1. Verwarm oven voor op 220°C.\n2. Rol deeg uit.\n3. Smeer tomatensaus erover.\n4. Verdeel mozzarella erover.\n5. Bak 12-15 min.\n6. Garneer met verse basilicum en een scheutje olie.' },
+  ];
+  demos.forEach(d => { d.id = 'r' + Date.now() + Math.random().toString(36).slice(2); recipes.push(d); });
+  save();
+  renderRecipes();
+}
+// ─── SERVICE WORKER ──────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
