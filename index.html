@@ -914,7 +914,11 @@
         <h1 class="page-title">Receptenverzameling</h1>
         <p class="page-subtitle">Jouw persoonlijk kookboek</p>
       </div>
-      <button class="btn btn-primary" onclick="openAddModal()">＋ Recept toevoegen</button>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="exportRecipes()" title="Exporteer alle recepten">⬇ Exporteren</button>
+        <button class="btn btn-secondary" onclick="openImportModal()" title="Importeer recepten">⬆ Importeren</button>
+        <button class="btn btn-primary" onclick="openAddModal()">＋ Recept toevoegen</button>
+      </div>
     </div>
 
     <div class="search-bar">
@@ -963,6 +967,54 @@
   </div>
 
 </main>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Recepten importeren</h2>
+      <button class="modal-close" onclick="closeImportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.88rem; color:var(--muted); margin-bottom:1.2rem; line-height:1.6;">
+        Kies een eerder geëxporteerd <strong>.json</strong> bestand. Je kunt bestaande recepten behouden of alles vervangen.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Bestand kiezen</label>
+        <div class="photo-upload-area" id="import-drop-area" onclick="document.getElementById('import-file-input').click()">
+          <div class="photo-upload-empty" id="import-upload-empty">
+            <div class="upload-icon">📂</div>
+            <div class="upload-label">Tik om een bestand te kiezen</div>
+            <div class="upload-hint">.json exportbestand</div>
+          </div>
+          <div id="import-file-chosen" style="display:none; padding:1rem; text-align:center;">
+            <div style="font-size:1.5rem; margin-bottom:0.3rem;">✅</div>
+            <div id="import-file-name" style="font-size:0.85rem; color:var(--bark); font-weight:500;"></div>
+            <div id="import-file-count" style="font-size:0.78rem; color:var(--muted); margin-top:0.2rem;"></div>
+          </div>
+        </div>
+        <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Importeermodus</label>
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; cursor:pointer;">
+            <input type="radio" name="import-mode" value="merge" checked style="accent-color:var(--terracotta);">
+            <span><strong>Samenvoegen</strong> — bestaande recepten behouden, nieuwe toevoegen</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; cursor:pointer;">
+            <input type="radio" name="import-mode" value="replace" style="accent-color:var(--terracotta);">
+            <span><strong>Vervangen</strong> — alle huidige recepten wissen en vervangen</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-secondary" onclick="closeImportModal()">Annuleren</button>
+        <button class="btn btn-primary" id="import-confirm-btn" onclick="confirmImport()" disabled>Importeren</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ADD/EDIT MODAL -->
 <div class="modal-overlay" id="recipe-modal">
@@ -1303,6 +1355,92 @@ function removePhoto(event) {
   event.stopPropagation();
   resetPhotoUI(null);
 }
+
+// ─── IMPORT / EXPORT ─────────────────────────────────────────────
+function exportRecipes() {
+  if (recipes.length === 0) { toast('Geen recepten om te exporteren.'); return; }
+  const data = JSON.stringify(recipes, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `recepten-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`${recipes.length} recept(en) geëxporteerd!`);
+}
+
+let importData = null;
+
+function openImportModal() {
+  importData = null;
+  document.getElementById('import-file-input').value = '';
+  document.getElementById('import-upload-empty').style.display = 'flex';
+  document.getElementById('import-file-chosen').style.display = 'none';
+  document.getElementById('import-confirm-btn').disabled = true;
+  document.querySelector('input[name="import-mode"][value="merge"]').checked = true;
+  document.getElementById('import-modal').classList.add('open');
+}
+
+function closeImportModal() {
+  document.getElementById('import-modal').classList.remove('open');
+  importData = null;
+}
+
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!Array.isArray(parsed)) throw new Error('Ongeldig formaat');
+      importData = parsed;
+      document.getElementById('import-upload-empty').style.display = 'none';
+      document.getElementById('import-file-chosen').style.display = 'block';
+      document.getElementById('import-file-name').textContent = file.name;
+      document.getElementById('import-file-count').textContent = `${parsed.length} recept(en) gevonden`;
+      document.getElementById('import-confirm-btn').disabled = false;
+    } catch(err) {
+      toast('Ongeldig bestand. Kies een geldig .json exportbestand.');
+      importData = null;
+      document.getElementById('import-confirm-btn').disabled = true;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function confirmImport() {
+  if (!importData) return;
+  const mode = document.querySelector('input[name="import-mode"]:checked').value;
+
+  if (mode === 'replace') {
+    if (!confirm(`Weet je zeker dat je alle ${recipes.length} huidige recept(en) wilt vervangen?`)) return;
+    recipes = importData.map(r => ({ ...r, id: r.id || ('r' + Date.now() + Math.random().toString(36).slice(2)) }));
+  } else {
+    // Merge: skip duplicates by id, add new ones
+    const existingIds = new Set(recipes.map(r => r.id));
+    let added = 0;
+    importData.forEach(r => {
+      if (!existingIds.has(r.id)) {
+        recipes.push({ ...r, id: r.id || ('r' + Date.now() + Math.random().toString(36).slice(2)) });
+        added++;
+      }
+    });
+    if (added === 0) { toast('Alle recepten bestaan al — niets toegevoegd.'); closeImportModal(); return; }
+    toast(`${added} nieuw recept(en) toegevoegd!`);
+  }
+
+  save();
+  renderRecipes();
+  closeImportModal();
+  if (mode === 'replace') toast(`${recipes.length} recept(en) geïmporteerd!`);
+}
+
+document.getElementById('import-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeImportModal();
+});
 
 // ─── WEEK PLANNER ────────────────────────────────────────────────
 function generateWeek() {
