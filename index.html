@@ -479,6 +479,21 @@
     transition: transform 0.25s;
   }
 
+  @media (max-width: 500px) {
+    .modal-overlay {
+      align-items: flex-end;
+      padding: 0;
+    }
+    .modal {
+      border-radius: 14px 14px 0 0;
+      max-height: 92vh;
+      transform: translateY(20px);
+    }
+    .modal-overlay.open .modal {
+      transform: translateY(0);
+    }
+  }
+
   .modal-overlay.open .modal {
     transform: scale(1) translateY(0);
   }
@@ -886,7 +901,69 @@
   .cat-snack { background: #7ab8c4; }
   .cat-other { background: #a0a0a0; }
 
-  /* Scrollbar */
+  /* RECIPES HEADER */
+  .recipes-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .recipes-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 500px) {
+    .recipes-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .recipes-header-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .recipes-header-actions .btn-primary {
+      grid-column: 1 / -1;
+    }
+    .recipes-header-actions .btn {
+      justify-content: center;
+      padding: 0.7rem 0.5rem;
+      font-size: 0.85rem;
+    }
+  }
+
+  /* WEEK HEADER MOBILE */
+  @media (max-width: 500px) {
+    .week-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .week-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .week-actions .btn {
+      justify-content: center;
+    }
+    main {
+      padding: 1.5rem 1rem 5rem;
+    }
+  }
+
+  /* SEARCH BAR MOBILE */
+  @media (max-width: 500px) {
+    .search-bar {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .search-input-wrap { min-width: unset; }
+    .filter-select { width: 100%; }
+  }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--cream); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -909,15 +986,15 @@
 
   <!-- RECIPES VIEW -->
   <div class="view active" id="view-recipes">
-    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+    <div class="recipes-header">
       <div>
         <h1 class="page-title">Receptenverzameling</h1>
         <p class="page-subtitle">Jouw persoonlijk kookboek</p>
       </div>
-      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-        <button class="btn btn-secondary" onclick="exportRecipes()" title="Exporteer alle recepten">⬇ Exporteren</button>
-        <button class="btn btn-secondary" onclick="openImportModal()" title="Importeer recepten">⬆ Importeren</button>
-        <button class="btn btn-primary" onclick="openAddModal()">＋ Recept toevoegen</button>
+      <div class="recipes-header-actions">
+        <button class="btn btn-secondary" onclick="exportRecipes()">⬇ Exporteren</button>
+        <button class="btn btn-secondary" onclick="openImportModal()">⬆ Importeren</button>
+        <button class="btn btn-primary" onclick="openAddModal()">＋ Toevoegen</button>
       </div>
     </div>
 
