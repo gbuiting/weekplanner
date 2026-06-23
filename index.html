@@ -683,6 +683,22 @@
     text-align: center;
   }
 
+  .day-card-pinned {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(201,168,76,0.35), var(--shadow);
+  }
+
+  .day-card-pinned .day-name {
+    background: #5a3e22;
+  }
+
+  .day-pinned-badge {
+    font-size: 0.68rem;
+    color: var(--gold);
+    font-weight: 500;
+    margin-top: 0.3rem;
+  }
+
   .day-recipe {
     padding: 0.85rem 0.75rem;
     min-height: 90px;
@@ -968,6 +984,87 @@
   ::-webkit-scrollbar-track { background: var(--cream); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* DAY RESTRICTION CHECKBOXES */
+  .day-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+  }
+
+  .day-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0.35rem 0.5rem;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    background: white;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+
+  .day-check-label:has(input:checked) {
+    border-color: var(--terracotta);
+    background: rgba(196,82,42,0.06);
+    color: var(--bark);
+  }
+
+  .day-check-label input[type="checkbox"] {
+    accent-color: var(--terracotta);
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .day-restriction-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    background: rgba(196,82,42,0.10);
+    color: var(--terracotta);
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    font-weight: 500;
+    margin-top: 0.3rem;
+  }
+
+  /* MOBILE FIXES */
+  @media (max-width: 500px) {
+    #toast {
+      bottom: 4.5rem; /* clear the bottom nav */
+    }
+
+    .detail-title {
+      font-size: 1.7rem;
+    }
+
+    .detail-meta {
+      gap: 0.75rem;
+    }
+
+    .ingredients-list {
+      grid-template-columns: 1fr;
+    }
+
+    .day-checkboxes {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .detail-actions {
+      flex-wrap: wrap;
+    }
+
+    .card-actions {
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-size: 1.7rem;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1153,6 +1250,31 @@
         <label class="form-label">Bereidingswijze</label>
         <textarea class="form-textarea" id="f-instructions" style="min-height:120px;" placeholder="Stap voor stap instructies…"></textarea>
       </div>
+      <div class="form-group">
+        <label class="form-label">Beschikbare dagen <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:0.75rem;color:var(--muted)">(leeg = altijd)</span></label>
+        <div class="day-checkboxes" id="f-days">
+          <label class="day-check-label"><input type="checkbox" value="0"> Maandag</label>
+          <label class="day-check-label"><input type="checkbox" value="1"> Dinsdag</label>
+          <label class="day-check-label"><input type="checkbox" value="2"> Woensdag</label>
+          <label class="day-check-label"><input type="checkbox" value="3"> Donderdag</label>
+          <label class="day-check-label"><input type="checkbox" value="4"> Vrijdag</label>
+          <label class="day-check-label"><input type="checkbox" value="5"> Zaterdag</label>
+          <label class="day-check-label"><input type="checkbox" value="6"> Zondag</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Vastzetten op dag <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:0.75rem;color:var(--muted)">(altijd op deze dag in de planner)</span></label>
+        <select class="form-select" id="f-pinned-day">
+          <option value="">Niet vastzetten</option>
+          <option value="0">Maandag</option>
+          <option value="1">Dinsdag</option>
+          <option value="2">Woensdag</option>
+          <option value="3">Donderdag</option>
+          <option value="4">Vrijdag</option>
+          <option value="5">Zaterdag</option>
+          <option value="6">Zondag</option>
+        </select>
+      </div>
       <div class="form-footer">
         <button class="btn btn-secondary" onclick="closeModal()">Annuleren</button>
         <button class="btn btn-primary" onclick="saveRecipe()">Opslaan</button>
@@ -1264,6 +1386,8 @@ function renderRecipes() {
             ${r.servings ? `<span>👤 ${esc(r.servings)}</span>` : ''}
           </div>
           ${r.desc ? `<div class="card-desc">${esc(r.desc)}</div>` : ''}
+          ${r.days && r.days.length > 0 ? `<div class="day-restriction-badge">📅 ${r.days.map(d=>DAYS[d].slice(0,2)).join(' · ')}</div>` : ''}
+          ${r.pinnedDay !== null && r.pinnedDay !== undefined ? `<div class="day-restriction-badge" style="background:rgba(201,168,76,0.15);color:var(--gold)">📌 ${DAYS[r.pinnedDay]}</div>` : ''}
         </div>
         <div class="card-actions" onclick="event.stopPropagation()">
           <button class="btn btn-ghost" onclick="openEditModal('${r.id}')">✏️ Bewerken</button>
@@ -1295,6 +1419,8 @@ function showDetail(id) {
         ${r.servings ? `<span>👤 ${esc(r.servings)}</span>` : ''}
       </div>
       ${r.desc ? `<p style="color:var(--muted);font-size:0.9rem">${esc(r.desc)}</p>` : ''}
+      ${r.days && r.days.length > 0 ? `<div class="day-restriction-badge" style="margin-bottom:0.5rem">📅 Alleen op: ${r.days.map(d=>DAYS[d]).join(', ')}</div>` : ''}
+      ${r.pinnedDay !== null && r.pinnedDay !== undefined ? `<div class="day-restriction-badge" style="margin-bottom:0.5rem;background:rgba(201,168,76,0.15);color:var(--gold)">📌 Vastgezet op ${DAYS[r.pinnedDay]}</div>` : ''}
       <div class="detail-actions">
         <button class="btn btn-secondary" onclick="openEditModal('${r.id}')">✏️ Bewerken</button>
         <button class="btn btn-danger" onclick="deleteRecipe('${r.id}', true)">🗑 Verwijderen</button>
@@ -1329,6 +1455,8 @@ function openAddModal() {
     if (el.tagName === 'SELECT') el.value = 'Avondeten';
     else el.value = '';
   });
+  document.querySelectorAll('#f-days input[type="checkbox"]').forEach(cb => cb.checked = false);
+  document.getElementById('f-pinned-day').value = '';
   resetPhotoUI(null);
   document.getElementById('recipe-modal').classList.add('open');
 }
@@ -1345,6 +1473,13 @@ function openEditModal(id) {
   document.getElementById('f-desc').value = r.desc || '';
   document.getElementById('f-ingredients').value = r.ingredients || '';
   document.getElementById('f-instructions').value = r.instructions || '';
+  // Restore day restrictions
+  const savedDays = r.days || [];
+  document.querySelectorAll('#f-days input[type="checkbox"]').forEach(cb => {
+    cb.checked = savedDays.includes(Number(cb.value));
+  });
+  // Restore pinned day
+  document.getElementById('f-pinned-day').value = (r.pinnedDay !== null && r.pinnedDay !== undefined) ? String(r.pinnedDay) : '';
   resetPhotoUI(r.photo || null);
   document.getElementById('recipe-modal').classList.add('open');
 }
@@ -1366,7 +1501,18 @@ function saveRecipe() {
     ingredients: document.getElementById('f-ingredients').value.trim(),
     instructions: document.getElementById('f-instructions').value.trim(),
     photo: currentPhotoData,
+    days: Array.from(document.querySelectorAll('#f-days input[type="checkbox"]:checked')).map(cb => Number(cb.value)),
+    pinnedDay: document.getElementById('f-pinned-day').value !== '' ? Number(document.getElementById('f-pinned-day').value) : null,
   };
+
+  // If pinning to a day, clear any other recipe already pinned to that same day
+  if (data.pinnedDay !== null) {
+    recipes.forEach(r => {
+      if (r.id !== editingId && r.pinnedDay === data.pinnedDay) {
+        r.pinnedDay = null;
+      }
+    });
+  }
 
   if (editingId) {
     const idx = recipes.findIndex(r => r.id === editingId);
@@ -1527,29 +1673,42 @@ function generateWeek() {
   }
 
   const lastSet = new Set(lastWeek.filter(Boolean));
-  
-  // Prefer recipes NOT in last week
-  let pool = recipes.filter(r => !lastSet.has(r.id));
-  let useLastWeekToo = false;
-
-  // If pool too small, supplement with all recipes
-  if (pool.length < 7) {
-    pool = [...recipes];
-    useLastWeekToo = recipes.length >= 7 && lastSet.size > 0;
-  }
-
-  // Save current week as last week before overwriting
   lastWeek = [...currentWeek.filter(Boolean)];
 
-  // Shuffle and pick 7
-  const shuffled = shuffle([...pool]);
-  currentWeek = [];
+  // First, place recipes pinned to a specific day
+  const newWeek = Array(7).fill(null);
+  recipes.forEach(r => {
+    const d = r.pinnedDay;
+    if (d !== null && d !== undefined && d >= 0 && d <= 6) {
+      newWeek[d] = r.id;
+    }
+  });
+
+  // Fill remaining slots
   for (let i = 0; i < 7; i++) {
-    currentWeek.push(shuffled[i % shuffled.length]?.id || null);
+    if (newWeek[i] !== null) continue;
+
+    // Eligible: not pinned to a specific day, and passes day-restriction filter
+    const eligible = recipes.filter(r => {
+      if (r.pinnedDay !== null && r.pinnedDay !== undefined) return false;
+      return !r.days || r.days.length === 0 || r.days.includes(i);
+    });
+
+    if (eligible.length === 0) continue;
+
+    let pool = eligible.filter(r => !lastSet.has(r.id));
+    if (pool.length === 0) pool = eligible;
+
+    const usedThisWeek = new Set(newWeek.filter(Boolean));
+    const fresh = pool.filter(r => !usedThisWeek.has(r.id));
+    const candidates = fresh.length > 0 ? fresh : pool;
+
+    newWeek[i] = candidates[Math.floor(Math.random() * candidates.length)].id;
   }
 
+  currentWeek = newWeek;
   save();
-  renderWeek(lastSet.size > 0 && !useLastWeekToo);
+  renderWeek(lastSet.size > 0);
   toast('Nieuwe week gegenereerd!');
 }
 
@@ -1567,21 +1726,24 @@ function renderWeek(showHistoryNote=false) {
   grid.innerHTML = DAYS.map((day, i) => {
     const rid = currentWeek[i];
     const recipe = rid ? recipes.find(r => r.id === rid) : null;
+    const pinned = recipe && recipe.pinnedDay === i;
 
     const body = recipe
       ? `<div class="day-recipe">
           <div class="day-recipe-cat">${recipe.category||'Other'}</div>
           <div class="day-recipe-name">${esc(recipe.name)}</div>
-          ${recipe.time ? `<div class="day-recipe-time">⏱ ${esc(recipe.time)}</div>` : ''}
+          ${recipe.time ? `<div class="day-recipe-time">\u23F1 ${esc(recipe.time)}</div>` : ''}
+          ${pinned ? `<div class="day-pinned-badge">\uD83D\uDCCC Vastgezet</div>` : ''}
         </div>`
       : `<div class="day-empty">Geen recept</div>`;
 
-    return `<div class="day-card" ${recipe ? `onclick="showDetail('${recipe.id}')" style="cursor:pointer"` : ''}>
+    return `<div class="day-card${pinned ? ' day-card-pinned' : ''}" ${recipe ? `onclick="showDetail('${recipe.id}')" style="cursor:pointer"` : ''}>
       <div class="day-name">${day}</div>
       ${body}
     </div>`;
   }).join('');
 }
+
 
 // ─── LIGHTBOX ────────────────────────────────────────────────────
 function openLightbox(src) {
